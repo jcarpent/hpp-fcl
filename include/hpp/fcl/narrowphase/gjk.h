@@ -65,6 +65,7 @@ struct HPP_FCL_DLLAPI MinkowskiDiff
 
   struct ShapeData {
     std::vector<int8_t> visited;
+    size_t num_dotproducts = 1; // By default at least one dot-product is computed per support call on a shape
   };
 
   /// @brief Store temporary data for the computation of the support point for
@@ -121,6 +122,13 @@ struct HPP_FCL_DLLAPI MinkowskiDiff
   {
     assert(getSupportFunc != NULL);
     getSupportFunc(*this, d, dIsNormalized, supp0, supp1, hint, const_cast<ShapeData*>(data));
+  }
+
+  /// @brief computes the number of dotproducts after a call to the support function.
+  // Needs to be called after a call to the support function.
+  inline size_t getSupportNumDotProducts() const {
+    size_t num_dotproducts = data[0].num_dotproducts + data[1].num_dotproducts;
+    return num_dotproducts;
   }
 };
 
@@ -245,6 +253,8 @@ struct HPP_FCL_DLLAPI GJK
   inline size_t getNumCallSupportEarly() { return num_call_support_early; }
   inline size_t getNumCallProjection() { return num_call_projection; }
   inline size_t getNumCallProjectionEarly() { return num_call_projection_early; }
+  inline size_t getCumulativeSupportDotprods() { return cumulative_support_dotprods; }
+  inline size_t getCumulativeSupportDotprodsEarly() { return cumulative_support_dotprods_early; }
 
   // Set functions for momentum
   inline void setMomentumVariant(MomentumVariant variant) { momentum_variant = variant; }
@@ -275,6 +285,8 @@ private:
   size_t num_call_support_early; 
   size_t num_call_projection; // Number of calls to simplex projection
   size_t num_call_projection_early; 
+  size_t cumulative_support_dotprods; // Number of dot-products computed for all support calls
+  size_t cumulative_support_dotprods_early;
 
   /// @brief discard one vertex from the simplex
   inline void removeVertex(Simplex& simplex);

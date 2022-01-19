@@ -128,6 +128,8 @@ void exposeGJK()
       .DEF_CLASS_FUNC(GJK, getNumCallSupportEarly)
       .DEF_CLASS_FUNC(GJK, getNumCallProjection)
       .DEF_CLASS_FUNC(GJK, getNumCallProjectionEarly)
+      .DEF_CLASS_FUNC(GJK, getCumulativeSupportDotprods)
+      .DEF_CLASS_FUNC(GJK, getCumulativeSupportDotprodsEarly)
       ;
   }
 }
