@@ -607,8 +607,16 @@ bool GJK::getClosestPoints (const MinkowskiDiff& shape, Vec3f& w0, Vec3f& w1)
 GJK::Status GJK::evaluate(const MinkowskiDiff& shape_, const Vec3f& guess,
     const support_func_guess_t& supportHint)
 {
-  iterations = 0;
+  // Reset metrics
+  bool found_separating_plane = false;
   FCL_REAL alpha = 0;
+  iterations = 0;
+  iterations_early = 0;
+  num_call_support = 0;
+  num_call_support_early = 0;
+  num_call_projection = 0;
+  num_call_projection_early = 0;
+
   const FCL_REAL inflation = shape_.inflation.sum();
   const FCL_REAL upper_bound = distance_upper_bound + inflation;
 
@@ -717,6 +725,15 @@ GJK::Status GJK::evaluate(const MinkowskiDiff& shape_, const Vec3f& guess,
       break;
     }
 
+    if (omega > 0 && !found_separating_plane)
+    {
+      found_separating_plane = true;
+      iterations_early = iterations;
+      num_call_support_early = num_call_support;
+      num_call_projection_early = num_call_projection;
+
+    }
+
     // check C: when the new support point is close to the sub-simplex where the ray point lies, stop (as the new simplex again is degenerated)
     // -- CURRENT HPPFCL CRITERION: ||ray|| - ||xstar|| <= rl - alpha (where rl = ||ray||, xstar is unknown optimal solution)
     /* alpha = std::max(alpha, omega); */
@@ -817,6 +834,7 @@ inline void GJK::appendVertex(Simplex& simplex, const Vec3f& v, bool isNormalize
 {
   simplex.vertex[simplex.rank] = free_v[--nfree]; // set the memory
   getSupport (v, isNormalized, *simplex.vertex[simplex.rank++], hint);
+  num_call_support++;
 }
 
 bool GJK::encloseOrigin()

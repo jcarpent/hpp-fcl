@@ -240,6 +240,11 @@ struct HPP_FCL_DLLAPI GJK
 
   // Performance metrics get functions
   inline size_t getIterations() { return iterations + 1; }
+  inline size_t getIterationsEarly() { return iterations_early + 1; }
+  inline size_t getNumCallSupport() { return num_call_support; }
+  inline size_t getNumCallSupportEarly() { return num_call_support_early; }
+  inline size_t getNumCallProjection() { return num_call_projection; }
+  inline size_t getNumCallProjectionEarly() { return num_call_projection_early; }
 
   // Set functions for momentum
   inline void setMomentumVariant(MomentumVariant variant) { momentum_variant = variant; }
@@ -254,7 +259,6 @@ private:
   Status status;
 
   unsigned int max_iterations;
-  size_t iterations;
   FCL_REAL tolerance;
   FCL_REAL tolerance_squared;
   FCL_REAL distance_upper_bound;
@@ -262,6 +266,15 @@ private:
   // Momentum
   MomentumVariant momentum_variant;
   bool normalize_support_direction;
+
+  // -- GJK PERFORMANCE METRICS --
+  // early: metric if we had stopped when separating plane is found
+  size_t iterations;
+  size_t iterations_early;
+  size_t num_call_support; // Number of calls to the support function
+  size_t num_call_support_early; 
+  size_t num_call_projection; // Number of calls to simplex projection
+  size_t num_call_projection_early; 
 
   /// @brief discard one vertex from the simplex
   inline void removeVertex(Simplex& simplex);
