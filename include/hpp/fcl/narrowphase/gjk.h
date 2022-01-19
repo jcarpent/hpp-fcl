@@ -238,6 +238,9 @@ struct HPP_FCL_DLLAPI GJK
     distance_upper_bound = dup;
   }
 
+  // Performance metrics get functions
+  inline size_t getIterations() { return iterations + 1; }
+
 private:
   SimplexV store_v[4];
   SimplexV* free_v[4];
@@ -247,6 +250,7 @@ private:
   Status status;
 
   unsigned int max_iterations;
+  size_t iterations;
   FCL_REAL tolerance;
   FCL_REAL distance_upper_bound;
 
