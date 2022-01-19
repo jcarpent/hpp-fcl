@@ -113,6 +113,7 @@ void exposeGJK()
       .DEF_RW_CLASS_ATTRIB (GJK, ray)
       .DEF_RW_CLASS_ATTRIB (GJK, support_hint)
       .DEF_CLASS_FUNC(GJK, evaluate)
+      .DEF_CLASS_FUNC(GJK, computeGJKAverageRunTime)
       .DEF_CLASS_FUNC(GJK, hasClosestPoints)
       .DEF_CLASS_FUNC(GJK, hasPenetrationInformation)
       .DEF_CLASS_FUNC(GJK, getClosestPoints)
@@ -133,6 +134,8 @@ void exposeGJK()
       .DEF_CLASS_FUNC(GJK, getCumulativeSupportDotprodsEarly)
       .DEF_CLASS_FUNC(GJK, getGJKRunTime)
       .DEF_CLASS_FUNC(GJK, getGJKRunTimeEarly)
+      .DEF_CLASS_FUNC(GJK, getAverageGJKRunTime)
+      .DEF_CLASS_FUNC(GJK, getAverageGJKRunTimeEarly)
       ;
   }
 }

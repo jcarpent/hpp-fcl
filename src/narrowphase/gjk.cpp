@@ -610,6 +610,33 @@ bool GJK::getClosestPoints (const MinkowskiDiff& shape, Vec3f& w0, Vec3f& w1)
   return true;
 }
 
+GJK::Status GJK::computeGJKAverageRunTime(const MinkowskiDiff &shape, const Vec3f &guess,
+    const support_func_guess_t &supportHint)
+{
+  assert(measure_run_time);
+  std::array<FCL_REAL, 100> times;
+  std::array<FCL_REAL, 100> times_early;
+  for (size_t i=0; i < 100; i++) {
+    status = evaluate(shape, guess, supportHint);
+    times[i] = gjk_run_time.user;
+    times_early[i] = gjk_run_time_early.user;
+  }
+  // Sort arrays
+  // And compute mean over first 95 elements
+  std::sort(times.begin(), times.end());
+  std::sort(times_early.begin(), times_early.end());
+
+  average_gjk_run_time = 0.;
+  average_gjk_run_time_early = 0.;
+  for (size_t i=0; i < 90; i++) {
+    average_gjk_run_time += times[i];
+    average_gjk_run_time_early += times_early[i];
+  }
+  average_gjk_run_time /= 90;
+  average_gjk_run_time_early /= 90;
+  return status;
+}
+
 GJK::Status GJK::evaluate(const MinkowskiDiff& shape_, const Vec3f& guess,
     const support_func_guess_t& supportHint)
 {
@@ -658,6 +685,8 @@ GJK::Status GJK::evaluate(const MinkowskiDiff& shape_, const Vec3f& guess,
   bool switch_momentum_off = false;
   if (measure_run_time)
   {
+    timer.stop();
+    timer_early.stop();
     timer.start();
     timer_early.start();
   }

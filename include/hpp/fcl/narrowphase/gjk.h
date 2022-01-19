@@ -199,6 +199,13 @@ struct HPP_FCL_DLLAPI GJK
   Status evaluate(const MinkowskiDiff& shape, const Vec3f& guess,
       const support_func_guess_t& supportHint = support_func_guess_t::Zero());
 
+  /// @brief Measuring execution times
+  // We want to average the compute time over 100 executions of the same problem.
+  // However because of CPU throttling, about 5-10% of the measured times are off the charts.
+  // We thus exclude the worst 10% execution times.
+  Status computeGJKAverageRunTime(const MinkowskiDiff &shape, const Vec3f &guess,
+      const support_func_guess_t &supportHint = support_func_guess_t::Zero());
+
   /// @brief apply the support function along a direction, the result is return in sv
   inline void getSupport(const Vec3f& d, bool dIsNormalized, SimplexV& sv,
       support_func_guess_t& hint) const
@@ -259,6 +266,8 @@ struct HPP_FCL_DLLAPI GJK
   inline size_t getCumulativeSupportDotprodsEarly() { return cumulative_support_dotprods_early; }
   inline CPUTimes getGJKRunTime() { return gjk_run_time; }
   inline CPUTimes getGJKRunTimeEarly() { return gjk_run_time_early; }
+  inline FCL_REAL getAverageGJKRunTime() { return average_gjk_run_time; }
+  inline FCL_REAL getAverageGJKRunTimeEarly() { return average_gjk_run_time_early; }
 
   // Set functions for momentum
   inline void setMomentumVariant(MomentumVariant variant) { momentum_variant = variant; }
@@ -296,6 +305,8 @@ private:
   size_t cumulative_support_dotprods_early;
   CPUTimes gjk_run_time;
   CPUTimes gjk_run_time_early;
+  FCL_REAL average_gjk_run_time;
+  FCL_REAL average_gjk_run_time_early;
 
   /// @brief discard one vertex from the simplex
   inline void removeVertex(Simplex& simplex);
