@@ -605,8 +605,7 @@ bool GJK::getClosestPoints (const MinkowskiDiff& shape, Vec3f& w0, Vec3f& w1)
 GJK::Status GJK::evaluate(const MinkowskiDiff& shape_, const Vec3f& guess,
     const support_func_guess_t& supportHint)
 {
-  size_t iterations = 0;
-  FCL_REAL alpha = 0;
+  iterations = 0;
   const FCL_REAL inflation = shape_.inflation.sum();
   const FCL_REAL upper_bound = distance_upper_bound + inflation;
 
@@ -641,6 +640,7 @@ GJK::Status GJK::evaluate(const MinkowskiDiff& shape_, const Vec3f& guess,
     // - EPA will not run correctly because it starts with a tetrahedron which
     //   does not include the origin. Note that, at this stage, we do not know
     //   whether a tetrahedron including the origin exists.
+    // NOTE: when using duality-gap criterion, it is also a good idea to use this check
     if(rl < tolerance) // mean origin is near the face of original simplex, return touch
     {
       assert(rl > 0);
@@ -663,16 +663,10 @@ GJK::Status GJK::evaluate(const MinkowskiDiff& shape_, const Vec3f& guess,
     }
 
     // check C: when the new support point is close to the sub-simplex where the ray point lies, stop (as the new simplex again is degenerated)
-    alpha = std::max(alpha, omega);
-    FCL_REAL diff (rl - alpha);
-    if (iterations == 0) diff = std::abs(diff);
-    // TODO here, we can stop at iteration 0 if this condition is met.
-    // We stopping at iteration 0, the closest point will not be valid.
-    // if(diff - tolerance * rl <= 0)
-    if(iterations > 0 && diff - tolerance * rl <= 0)
+    FCL_REAL duality_gap = 2 * ray.dot(ray - w);
+    if(iterations > 0 && duality_gap - tolerance * tolerance <= 0)
     {
-      if (iterations > 0)
-        removeVertex(simplices[current]);
+      removeVertex(simplices[current]);
       distance = rl - inflation;
       // TODO When inflation is strictly positive, the distance may be exactly
       // zero (so the ray is not zero) and we are not in the case rl < tolerance.
