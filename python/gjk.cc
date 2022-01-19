@@ -72,6 +72,16 @@ void exposeGJK()
       ;
   }
 
+  if(!eigenpy::register_symbolic_link_to_registered_type<GJK::MomentumVariant>())
+  {
+    enum_ <GJK::MomentumVariant> ("MomentumVariant")
+      .value ("NoMomentum", GJK::NoMomentum)
+      .value ("HeavyBall", GJK::HeavyBall)
+      .value ("Nesterov", GJK::Nesterov)
+      .export_values()
+      ;
+  }
+
   if(!eigenpy::register_symbolic_link_to_registered_type<MinkowskiDiff>())
   {
     class_ <MinkowskiDiff> ("MinkowskiDiff", doxygen::class_doc<MinkowskiDiff>(), no_init)
@@ -108,6 +118,9 @@ void exposeGJK()
       .DEF_CLASS_FUNC(GJK, getClosestPoints)
       .DEF_CLASS_FUNC(GJK, setDistanceEarlyBreak)
       .DEF_CLASS_FUNC(GJK, getGuessFromSimplex)
+      // Momentum related
+      .DEF_CLASS_FUNC(GJK, setMomentumVariant)
+      .DEF_CLASS_FUNC(GJK, setNormalizeSupportDirection)
       // Metrics to measure GJK performances
       .DEF_CLASS_FUNC(GJK, getIterations)
       ;

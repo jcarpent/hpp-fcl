@@ -629,6 +629,13 @@ GJK::Status GJK::evaluate(const MinkowskiDiff& shape_, const Vec3f& guess,
   } else
     ray = guess;
 
+  // Momentum 
+  MomentumVariant current_momentum_variant = momentum_variant;
+  Vec3f w = ray;
+  Vec3f dir = ray;
+  Vec3f y;
+  FCL_REAL momentum;
+  bool switch_momentum_off = false;
   do
   {
     vertex_id_t next = (vertex_id_t)(1 - current);
@@ -649,10 +656,54 @@ GJK::Status GJK::evaluate(const MinkowskiDiff& shape_, const Vec3f& guess,
       break;
     }
 
-    appendVertex(curr_simplex, -ray, false, support_hint); // see below, ray points away from origin
+    // Compute direction for support call
+    switch (current_momentum_variant) {
+      case NoMomentum:
+        dir = ray;
+
+      // For accelerated GJK (heavy ball or nesterov), the best momentum scheme is slightly different if we normalize or not
+      // We normalize for non-stricly convex Minkowski differences (i.e when shapes are meshes)
+      case HeavyBall:
+        // For heavy ball, momentum needs to decrease...
+        if (normalize_support_direction)
+        {
+          // ... But not for non-stricly convex. I think it's due to the pyramidal width of meshes.
+          // See Lacoste & Jaggi 2015 paper - On the Global Linear Convergence of Frank-Wolfe Optimization Variants
+          momentum = (FCL_REAL(iterations) + 2) / (FCL_REAL(iterations) + 3);
+          dir = momentum * dir / dir.norm() + (1 - momentum) * ray / std::max(ray.norm(), 1e-3);
+        }
+        else
+        {
+          momentum = (FCL_REAL(iterations) + 1) / (FCL_REAL(iterations) + 3);
+          momentum = 1 - momentum;
+          dir = momentum * dir + (1 - momentum) * ray;
+        }
+        break;
+
+      case Nesterov:
+        // For Nesterov, momentum needs to increase
+        if (normalize_support_direction)
+        {
+          momentum = (FCL_REAL(iterations) + 2) / (FCL_REAL(iterations) + 3);
+          y = momentum * ray + (1 - momentum) * w; 
+          dir = momentum * dir / dir.norm() + (1 -momentum) * y / y.norm();
+        }
+        else
+        {
+          momentum = (FCL_REAL(iterations) + 1) / (FCL_REAL(iterations) + 3);
+          y =  momentum * ray + (1 - momentum) * w;
+          dir = momentum * dir + (1 - momentum) * y;
+        }
+        break;
+
+      default:
+        throw std::logic_error("Invalid momentum variant.");
+      }
+
+    appendVertex(curr_simplex, -dir, false, support_hint); // see below, ray points away from origin
 
     // check removed (by ?): when the new support point is close to previous support points, stop (as the new simplex is degenerated)
-    const Vec3f& w = curr_simplex.vertex[curr_simplex.rank - 1]->w;
+    w = curr_simplex.vertex[curr_simplex.rank - 1]->w;
 
     // check B: no collision if omega > 0
     FCL_REAL omega = ray.dot(w) / rl;
@@ -667,50 +718,62 @@ GJK::Status GJK::evaluate(const MinkowskiDiff& shape_, const Vec3f& guess,
     if(iterations > 0 && duality_gap - tolerance * tolerance <= 0)
     {
       removeVertex(simplices[current]);
-      distance = rl - inflation;
-      // TODO When inflation is strictly positive, the distance may be exactly
-      // zero (so the ray is not zero) and we are not in the case rl < tolerance.
-      if (distance < tolerance)
-        status = Inside;
-      break;
+      if (current_momentum_variant != NoMomentum)
+      {
+        switch_momentum_off = true;
+      } else {
+        distance = rl - inflation;
+        // TODO When inflation is strictly positive, the distance may be exactly
+        // zero (so the ray is not zero) and we are not in the case rl < tolerance.
+        if (distance < tolerance)
+          status = Inside;
+        break;
+      }
     }
 
-    // This has been rewritten thanks to the excellent video:
-    // https://youtu.be/Qupqu1xe7Io
-    bool inside;
-    switch(curr_simplex.rank)
+    if (switch_momentum_off)
     {
-    case 1: // Only at the first iteration
-      assert(iterations == 0);
-      ray = w;
-      inside = false;
-      next_simplex.rank = 1;
-      next_simplex.vertex[0] = curr_simplex.vertex[0];
-      break;
-    case 2:
-      inside = projectLineOrigin (curr_simplex, next_simplex);
-      break;
-    case 3:
-      inside = projectTriangleOrigin (curr_simplex, next_simplex);
-      break;
-    case 4:
-      inside = projectTetrahedraOrigin (curr_simplex, next_simplex);
-      break;
-    default:
-      throw std::logic_error("Invalid simplex rank");
-    }
-    assert (nfree+next_simplex.rank == 4);
-    current = next;
-    if (!inside)
-      rl = ray.norm();
-    if(inside || rl == 0) {
-      status = Inside;
-      distance = - inflation - 1.;
-      break;
-    }
+      current_momentum_variant = NoMomentum;
+      switch_momentum_off = false;
+      iterations++;
+    } else {
+      // This has been rewritten thanks to the excellent video:
+      // https://youtu.be/Qupqu1xe7Io
+      bool inside;
+      switch(curr_simplex.rank)
+      {
+      case 1: // Only at the first iteration
+        assert(iterations == 0);
+        ray = w;
+        inside = false;
+        next_simplex.rank = 1;
+        next_simplex.vertex[0] = curr_simplex.vertex[0];
+        break;
+      case 2:
+        inside = projectLineOrigin (curr_simplex, next_simplex);
+        break;
+      case 3:
+        inside = projectTriangleOrigin (curr_simplex, next_simplex);
+        break;
+      case 4:
+        inside = projectTetrahedraOrigin (curr_simplex, next_simplex);
+        break;
+      default:
+        throw std::logic_error("Invalid simplex rank");
+      }
+      num_call_projection++;
+      assert (nfree+next_simplex.rank == 4);
+      current = next;
+      if (!inside)
+        rl = ray.norm();
+      if(inside || rl == 0) {
+        status = Inside;
+        distance = - inflation - 1.;
+        break;
+      }
 
-    status = ((++iterations) < max_iterations) ? status : Failed;
-      
+      status = ((++iterations) < max_iterations) ? status : Failed;
+    }
   } while(status == Valid);
 
   simplex = &simplices[current];
