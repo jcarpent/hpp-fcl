@@ -150,6 +150,7 @@ struct HPP_FCL_DLLAPI GJK
   };
 
   enum Status {Valid, Inside, Failed};
+  enum MomentumVariant { NoMomentum, HeavyBall, Nesterov };
 
   MinkowskiDiff const* shape;
   Vec3f ray;
@@ -178,8 +179,7 @@ struct HPP_FCL_DLLAPI GJK
   /// with some vertices closer than this threshold.
   ///
   /// Suggested values are 100 iterations and a tolerance of 1e-6.
-  GJK(unsigned int max_iterations_, FCL_REAL tolerance_)  : max_iterations(max_iterations_),
-                                                            tolerance(tolerance_)
+  GJK(unsigned int max_iterations_, FCL_REAL tolerance_)  : max_iterations(max_iterations_), tolerance(tolerance_)
   {
     initialize(); 
   }
@@ -241,6 +241,10 @@ struct HPP_FCL_DLLAPI GJK
   // Performance metrics get functions
   inline size_t getIterations() { return iterations + 1; }
 
+  // Set functions for momentum
+  inline void setMomentumVariant(MomentumVariant variant) { momentum_variant = variant; }
+  inline void setNormalizeSupportDirection(bool normalize) { normalize_support_direction = normalize; }
+
 private:
   SimplexV store_v[4];
   SimplexV* free_v[4];
@@ -253,6 +257,10 @@ private:
   size_t iterations;
   FCL_REAL tolerance;
   FCL_REAL distance_upper_bound;
+
+  // Momentum
+  MomentumVariant momentum_variant;
+  bool normalize_support_direction;
 
   /// @brief discard one vertex from the simplex
   inline void removeVertex(Simplex& simplex);
