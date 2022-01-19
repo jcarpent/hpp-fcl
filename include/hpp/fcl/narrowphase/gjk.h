@@ -42,6 +42,7 @@
 
 #include <hpp/fcl/shape/geometric_shapes.h>
 #include <hpp/fcl/math/transform.h>
+#include <hpp/fcl/timings.h>
 
 namespace hpp
 {
@@ -247,6 +248,7 @@ struct HPP_FCL_DLLAPI GJK
   }
 
   // Performance metrics get functions
+  void measureRunTime() { measure_run_time = true; }
   inline size_t getIterations() { return iterations + 1; }
   inline size_t getIterationsEarly() { return iterations_early + 1; }
   inline size_t getNumCallSupport() { return num_call_support; }
@@ -255,6 +257,8 @@ struct HPP_FCL_DLLAPI GJK
   inline size_t getNumCallProjectionEarly() { return num_call_projection_early; }
   inline size_t getCumulativeSupportDotprods() { return cumulative_support_dotprods; }
   inline size_t getCumulativeSupportDotprodsEarly() { return cumulative_support_dotprods_early; }
+  inline CPUTimes getGJKRunTime() { return gjk_run_time; }
+  inline CPUTimes getGJKRunTimeEarly() { return gjk_run_time_early; }
 
   // Set functions for momentum
   inline void setMomentumVariant(MomentumVariant variant) { momentum_variant = variant; }
@@ -272,6 +276,9 @@ private:
   FCL_REAL tolerance;
   FCL_REAL tolerance_squared;
   FCL_REAL distance_upper_bound;
+  bool measure_run_time;
+  Timer timer;
+  Timer timer_early;
 
   // Momentum
   MomentumVariant momentum_variant;
@@ -287,6 +294,8 @@ private:
   size_t num_call_projection_early; 
   size_t cumulative_support_dotprods; // Number of dot-products computed for all support calls
   size_t cumulative_support_dotprods_early;
+  CPUTimes gjk_run_time;
+  CPUTimes gjk_run_time_early;
 
   /// @brief discard one vertex from the simplex
   inline void removeVertex(Simplex& simplex);

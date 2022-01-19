@@ -122,6 +122,7 @@ void exposeGJK()
       .DEF_CLASS_FUNC(GJK, setMomentumVariant)
       .DEF_CLASS_FUNC(GJK, setNormalizeSupportDirection)
       // Metrics to measure GJK performances
+      .DEF_CLASS_FUNC(GJK, measureRunTime)
       .DEF_CLASS_FUNC(GJK, getIterations)
       .DEF_CLASS_FUNC(GJK, getIterationsEarly)
       .DEF_CLASS_FUNC(GJK, getNumCallSupport)
@@ -130,6 +131,8 @@ void exposeGJK()
       .DEF_CLASS_FUNC(GJK, getNumCallProjectionEarly)
       .DEF_CLASS_FUNC(GJK, getCumulativeSupportDotprods)
       .DEF_CLASS_FUNC(GJK, getCumulativeSupportDotprodsEarly)
+      .DEF_CLASS_FUNC(GJK, getGJKRunTime)
+      .DEF_CLASS_FUNC(GJK, getGJKRunTimeEarly)
       ;
   }
 }

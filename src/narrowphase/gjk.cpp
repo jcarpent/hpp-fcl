@@ -503,6 +503,9 @@ void GJK::initialize()
   simplex = NULL;
   momentum_variant = NoMomentum;
   tolerance_squared = tolerance * tolerance;
+  measure_run_time = false;
+  timer.stop();
+  timer_early.stop();
 }
 
 Vec3f GJK::getGuessFromSimplex() const
@@ -653,6 +656,11 @@ GJK::Status GJK::evaluate(const MinkowskiDiff& shape_, const Vec3f& guess,
   Vec3f y;
   FCL_REAL momentum;
   bool switch_momentum_off = false;
+  if (measure_run_time)
+  {
+    timer.start();
+    timer_early.start();
+  }
   do
   {
     vertex_id_t next = (vertex_id_t)(1 - current);
@@ -737,6 +745,7 @@ GJK::Status GJK::evaluate(const MinkowskiDiff& shape_, const Vec3f& guess,
       num_call_support_early = num_call_support;
       num_call_projection_early = num_call_projection;
       cumulative_support_dotprods_early = cumulative_support_dotprods;
+      gjk_run_time_early = timer_early.elapsed();
 
     }
 
@@ -825,13 +834,14 @@ GJK::Status GJK::evaluate(const MinkowskiDiff& shape_, const Vec3f& guess,
       status = ((++iterations) < max_iterations) ? status : Failed;
     }
   } while(status == Valid);
-
+  gjk_run_time = timer.elapsed();
   if (!found_separating_plane) 
   {
     iterations_early = iterations;
     num_call_support_early = num_call_support;
     num_call_projection_early = num_call_projection;
     cumulative_support_dotprods_early = cumulative_support_dotprods;
+    gjk_run_time_early = gjk_run_time;
   }
 
   simplex = &simplices[current];
