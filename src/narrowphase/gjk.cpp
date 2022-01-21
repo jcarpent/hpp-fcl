@@ -714,8 +714,8 @@ GJK::Status GJK::evaluate(const MinkowskiDiff& shape_, const Vec3f& guess,
     }
 
     // check C: when the new support point is close to the sub-simplex where the ray point lies, stop (as the new simplex again is degenerated)
-    FCL_REAL duality_gap = 2 * ray.dot(ray - w);
-    if(iterations > 0 && duality_gap - tolerance * tolerance <= 0)
+    FCL_REAL duality_gap = std::sqrt(2 * ray.dot(ray - w));
+    if(iterations > 0 && duality_gap - tolerance * rl <= 0)
     {
       removeVertex(simplices[current]);
       if (current_momentum_variant != NoMomentum)
