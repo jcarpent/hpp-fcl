@@ -735,7 +735,6 @@ GJK::Status GJK::evaluate(const MinkowskiDiff& shape_, const Vec3f& guess,
       default:
         throw std::logic_error("Invalid simplex rank");
       }
-      num_call_projection++;
       assert (nfree+next_simplex.rank == 4);
       current = next;
       if (!inside)
