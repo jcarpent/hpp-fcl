@@ -473,6 +473,7 @@ void GJK::initialize()
   distance_upper_bound = (std::numeric_limits<FCL_REAL>::max)();
   simplex = NULL;
   momentum_variant = NoMomentum;
+  tolerance_squared = tolerance * tolerance;
 }
 
 Vec3f GJK::getGuessFromSimplex() const
@@ -599,6 +600,7 @@ GJK::Status GJK::evaluate(const MinkowskiDiff& shape_, const Vec3f& guess,
   support_hint = supportHint;
 
   FCL_REAL rl = guess.norm();
+  FCL_REAL rl_squared = guess.squaredNorm();
   if (rl < tolerance) {
     ray = Vec3f(-1,0,0);
     rl = 1;
@@ -699,17 +701,17 @@ GJK::Status GJK::evaluate(const MinkowskiDiff& shape_, const Vec3f& guess,
     /* FCL_REAL diff = std::sqrt(2 * ray.dot(ray - w)); */
     /* bool cv_check_passed = diff - tolerance * rl <= 0; */
     // ---- Squared version:
-    FCL_REAL diff = 2 * ray.dot(ray - w);
-    bool cv_check_passed = diff - tolerance * tolerance * rl * rl <= 0;
+    /* FCL_REAL diff = 2 * ray.dot(ray - w); */
+    /* bool cv_check_passed = diff - tolerance * tolerance * rl * rl <= 0; */
 
     // -- IMPROVED DUALITY GAP: ||ray - xstar|| <= sqrt(rl*rl - alpha*alpha)
     /* alpha = std::max(alpha, omega); */
     /* FCL_REAL diff = std::sqrt(rl * rl - alpha * alpha); */ 
     /* bool cv_check_passed = diff - tolerance * rl <= 0; */
     // ---- Squared version:
-    /* alpha = std::max(alpha, omega); */
-    /* FCL_REAL diff = rl * rl - alpha * alpha; */ 
-    /* bool cv_check_passed = diff - tolerance * tolerance * rl * rl <= 0; */
+    alpha = std::max(alpha, omega);
+    FCL_REAL diff = rl_squared - alpha * alpha; 
+    bool cv_check_passed = diff - tolerance_squared * rl_squared <= 0;
 
     // --> Applying check C
     if(iterations > 0 && cv_check_passed)
@@ -761,7 +763,10 @@ GJK::Status GJK::evaluate(const MinkowskiDiff& shape_, const Vec3f& guess,
       assert (nfree+next_simplex.rank == 4);
       current = next;
       if (!inside)
+      {
         rl = ray.norm();
+        rl_squared = ray.squaredNorm();
+      }
       if(inside || rl == 0) {
         status = Inside;
         distance = - inflation - 1.;

@@ -256,6 +256,7 @@ private:
   unsigned int max_iterations;
   size_t iterations;
   FCL_REAL tolerance;
+  FCL_REAL tolerance_squared;
   FCL_REAL distance_upper_bound;
 
   // Momentum
