@@ -706,7 +706,7 @@ GJK::Status GJK::evaluate(const MinkowskiDiff& shape_, const Vec3f& guess,
     w = curr_simplex.vertex[curr_simplex.rank - 1]->w;
 
     // check B: no collision if omega > 0
-    FCL_REAL omega = ray.dot(w) / rl;
+    FCL_REAL omega = dir.dot(w) / dir.norm();
     if (omega > upper_bound)
     {
       distance = omega - inflation;
