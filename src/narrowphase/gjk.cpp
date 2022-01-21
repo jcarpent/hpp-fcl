@@ -581,6 +581,7 @@ GJK::Status GJK::evaluate(const MinkowskiDiff& shape_, const Vec3f& guess,
     const support_func_guess_t& supportHint)
 {
   iterations = 0;
+  FCL_REAL alpha = 0;
   const FCL_REAL inflation = shape_.inflation.sum();
   const FCL_REAL upper_bound = distance_upper_bound + inflation;
 
@@ -689,8 +690,29 @@ GJK::Status GJK::evaluate(const MinkowskiDiff& shape_, const Vec3f& guess,
     }
 
     // check C: when the new support point is close to the sub-simplex where the ray point lies, stop (as the new simplex again is degenerated)
-    FCL_REAL duality_gap = std::sqrt(2 * ray.dot(ray - w));
-    if(iterations > 0 && duality_gap - tolerance * rl <= 0)
+    // -- CURRENT HPPFCL CRITERION: ||ray|| - ||xstar|| <= rl - alpha (where rl = ||ray||, xstar is unknown optimal solution)
+    /* alpha = std::max(alpha, omega); */
+    /* FCL_REAL diff = rl - alpha; */ 
+    /* bool cv_check_passed = diff - tolerance * rl <= 0; */
+
+    // -- DUALITY GAP: ||ray - xstar|| <= sqrt(2 * ray.dot(ray - w))
+    /* FCL_REAL diff = std::sqrt(2 * ray.dot(ray - w)); */
+    /* bool cv_check_passed = diff - tolerance * rl <= 0; */
+    // ---- Squared version:
+    FCL_REAL diff = 2 * ray.dot(ray - w);
+    bool cv_check_passed = diff - tolerance * tolerance * rl * rl <= 0;
+
+    // -- IMPROVED DUALITY GAP: ||ray - xstar|| <= sqrt(rl*rl - alpha*alpha)
+    /* alpha = std::max(alpha, omega); */
+    /* FCL_REAL diff = std::sqrt(rl * rl - alpha * alpha); */ 
+    /* bool cv_check_passed = diff - tolerance * rl <= 0; */
+    // ---- Squared version:
+    /* alpha = std::max(alpha, omega); */
+    /* FCL_REAL diff = rl * rl - alpha * alpha; */ 
+    /* bool cv_check_passed = diff - tolerance * tolerance * rl * rl <= 0; */
+
+    // --> Applying check C
+    if(iterations > 0 && cv_check_passed)
     {
       removeVertex(simplices[current]);
       if (current_momentum_variant != NoMomentum)
