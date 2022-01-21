@@ -309,7 +309,7 @@ namespace fcl
     GJKSolver()
     {
       gjk_max_iterations = 128;
-      gjk_tolerance = 1e-6;
+      gjk_tolerance = 1e-4;
       epa_max_face_num = 128;
       epa_max_vertex_num = 64;
       epa_max_iterations = 255;
