@@ -84,6 +84,8 @@ struct HPP_FCL_DLLAPI MinkowskiDiff
   /// @brief The radius of the sphere swepted volume.
   /// The 2 values correspond to the inflation of shape 0 and shape 1.
   Eigen::Array<FCL_REAL, 1, 2> inflation;
+  int index_support0;
+  int index_support1;
 
   /// @brief Number of points in a Convex object from which using a logarithmic
   /// support function is faster than a linear one.
@@ -111,11 +113,24 @@ struct HPP_FCL_DLLAPI MinkowskiDiff
   {
     return getSupport(shapes[0], d, dIsNormalized, hint);
   }
+  //
+  /// @brief support function for shape0, reference to hint removed
+  inline Vec3f support0(const Vec3f &d, bool dIsNormalized) {
+    Vec3f res;
+    res = getSupport(shapes[0], d, dIsNormalized, index_support0);
+    return res;
+  }
 
   /// @brief support function for shape1
   inline Vec3f support1(const Vec3f& d, bool dIsNormalized, int& hint) const
   {
     return oR1 * getSupport(shapes[1], oR1.transpose() * d, dIsNormalized, hint) + ot1;
+  }
+  /// @brief support function for shape1
+  inline Vec3f support1(const Vec3f &d, bool dIsNormalized) {
+    Vec3f res;
+    res = oR1 * getSupport(shapes[1], oR1.transpose() * d, dIsNormalized, index_support1) + ot1;
+    return res;
   }
 
   /// @brief support function for the pair of shapes
@@ -142,8 +157,12 @@ struct HPP_FCL_DLLAPI GJK
   {
     /// @brief support vector for shape 0 and 1.
     Vec3f w0, w1; 
+    int index_w0 = 0;
+    int index_w1 = 0;
     /// @brief support vector (i.e., the furthest point on the shape along the support direction)
     Vec3f w;
+
+    SimplexV(){}
   };
 
   typedef unsigned char vertex_id_t;
@@ -152,10 +171,25 @@ struct HPP_FCL_DLLAPI GJK
   {
     /// @brief simplex vertex
     SimplexV* vertex[4];
+    SimplexV vertex_mem[4]; // used to allocate memory
     /// @brief size of simplex (number of vertices)
     vertex_id_t rank;
+    Vec3f cp0 = Vec3f::Zero();
+    Vec3f cp1 = Vec3f::Zero();
 
-    Simplex() {}
+    Simplex() {
+      vertex[0] = &vertex_mem[0];
+      vertex[1] = &vertex_mem[1];
+      vertex[2] = &vertex_mem[2];
+      vertex[3] = &vertex_mem[3];
+    }
+
+    inline SimplexV getVertex(int i) const {
+      SimplexV v = *vertex[i];
+      return v;
+    }
+
+    inline void setVertex(const SimplexV &v, int i) { *vertex[i] = v; }
   };
 
   enum Status {Valid, Inside, Failed};
@@ -273,10 +307,21 @@ struct HPP_FCL_DLLAPI GJK
   inline void setMomentumVariant(MomentumVariant variant) { momentum_variant = variant; }
   inline void setNormalizeSupportDirection(bool normalize) { normalize_support_direction = normalize; }
 
+  // Unprotected for python access
+  vertex_id_t nfree;
+
+  /// @brief Project origin (0) onto line a-b
+  bool projectLineOrigin(const Simplex& current, Simplex& next);
+
+  /// @brief Project origin (0) onto triangle a-b-c
+  bool projectTriangleOrigin(const Simplex& current, Simplex& next);
+
+  /// @brief Project origin (0) onto tetrahedran a-b-c-d
+  bool projectTetrahedraOrigin(const Simplex& current, Simplex& next);
+
 private:
   SimplexV store_v[4];
   SimplexV* free_v[4];
-  vertex_id_t nfree;
   vertex_id_t current;
   Simplex* simplex;
   Status status;
@@ -314,15 +359,6 @@ private:
   /// @brief append one vertex to the simplex
   inline void appendVertex(Simplex& simplex, const Vec3f& v, bool isNormalized,
       support_func_guess_t& hint);
-
-  /// @brief Project origin (0) onto line a-b
-  bool projectLineOrigin(const Simplex& current, Simplex& next);
-
-  /// @brief Project origin (0) onto triangle a-b-c
-  bool projectTriangleOrigin(const Simplex& current, Simplex& next);
-
-  /// @brief Project origin (0) onto tetrahedran a-b-c-d
-  bool projectTetrahedraOrigin(const Simplex& current, Simplex& next);
 };
 
 
