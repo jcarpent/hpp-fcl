@@ -701,17 +701,17 @@ GJK::Status GJK::evaluate(const MinkowskiDiff& shape_, const Vec3f& guess,
     /* FCL_REAL diff = std::sqrt(2 * ray.dot(ray - w)); */
     /* bool cv_check_passed = diff - tolerance * rl <= 0; */
     // ---- Squared version:
-    /* FCL_REAL diff = 2 * ray.dot(ray - w); */
-    /* bool cv_check_passed = diff - tolerance * tolerance * rl * rl <= 0; */
+    FCL_REAL diff = 2 * ray.dot(ray - w);
+    bool cv_check_passed = ((diff / (tolerance * rl)) - tolerance * rl) <= 0;
 
     // -- IMPROVED DUALITY GAP: ||ray - xstar|| <= sqrt(rl*rl - alpha*alpha)
     /* alpha = std::max(alpha, omega); */
     /* FCL_REAL diff = std::sqrt(rl * rl - alpha * alpha); */ 
     /* bool cv_check_passed = diff - tolerance * rl <= 0; */
     // ---- Squared version:
-    alpha = std::max(alpha, omega);
-    FCL_REAL diff = rl_squared - alpha * alpha; 
-    bool cv_check_passed = diff - tolerance_squared * rl_squared <= 0;
+    /* alpha = std::max(alpha, omega); */
+    /* FCL_REAL diff = rl_squared - alpha * alpha; */ 
+    /* bool cv_check_passed = ((diff / (tolerance * rl)) - tolerance * rl) <= 0; */
 
     // --> Applying check C
     if(iterations > 0 && cv_check_passed)
