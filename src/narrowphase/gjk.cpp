@@ -472,6 +472,7 @@ void GJK::initialize()
   status = Failed;
   distance_upper_bound = (std::numeric_limits<FCL_REAL>::max)();
   simplex = NULL;
+  momentum_variant = NoMomentum;
 }
 
 Vec3f GJK::getGuessFromSimplex() const
