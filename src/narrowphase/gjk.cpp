@@ -819,9 +819,9 @@ GJK::Status GJK::evaluate(const MinkowskiDiff& shape_, const Vec3f& guess,
 
     if (switch_momentum_off)
     {
+      // No iterate update so no iteration.
       current_momentum_variant = NoMomentum;
       switch_momentum_off = false;
-      iterations++;
     } else {
       // This has been rewritten thanks to the excellent video:
       // https://youtu.be/Qupqu1xe7Io
