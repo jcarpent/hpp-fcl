@@ -290,8 +290,8 @@ struct HPP_FCL_DLLAPI GJK
 
   // Performance metrics get functions
   void measureRunTime() { measure_run_time = true; }
-  inline size_t getIterations() { return iterations + 1; }
-  inline size_t getIterationsEarly() { return iterations_early + 1; }
+  inline size_t getIterations() { return iterations; }
+  inline size_t getIterationsEarly() { return iterations_early; }
   inline size_t getNumCallSupport() { return num_call_support; }
   inline size_t getNumCallSupportEarly() { return num_call_support_early; }
   inline size_t getNumCallProjection() { return num_call_projection; }
