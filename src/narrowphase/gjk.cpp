@@ -770,7 +770,7 @@ GJK::Status GJK::evaluate(const MinkowskiDiff& shape_, const Vec3f& guess,
     if (omega > 0 && !found_separating_plane)
     {
       found_separating_plane = true;
-      iterations_early = iterations;
+      iterations_early = iterations + 1; // Take this iteration into consideration
       num_call_support_early = num_call_support;
       num_call_projection_early = num_call_projection;
       cumulative_support_dotprods_early = cumulative_support_dotprods;
@@ -808,6 +808,7 @@ GJK::Status GJK::evaluate(const MinkowskiDiff& shape_, const Vec3f& guess,
       {
         switch_momentum_off = true;
       } else {
+        ++iterations; // Take this iteration into consideration
         distance = rl - inflation;
         // TODO When inflation is strictly positive, the distance may be exactly
         // zero (so the ray is not zero) and we are not in the case rl < tolerance.
@@ -819,7 +820,7 @@ GJK::Status GJK::evaluate(const MinkowskiDiff& shape_, const Vec3f& guess,
 
     if (switch_momentum_off)
     {
-      // No iterate update so no iteration.
+      // No iterate update so no ++iteration.
       current_momentum_variant = NoMomentum;
       switch_momentum_off = false;
     } else {
