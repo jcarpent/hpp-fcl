@@ -501,11 +501,12 @@ void GJK::initialize()
   status = Failed;
   distance_upper_bound = (std::numeric_limits<FCL_REAL>::max)();
   simplex = NULL;
-  momentum_variant = NoMomentum;
+  gjk_variant = Vanilla;
   tolerance_squared = tolerance * tolerance;
   measure_run_time = false;
   timer.stop();
   timer_early.stop();
+  convergence_criterion = DG;
 }
 
 Vec3f GJK::getGuessFromSimplex() const
@@ -677,12 +678,12 @@ GJK::Status GJK::evaluate(const MinkowskiDiff& shape_, const Vec3f& guess,
     ray = guess;
 
   // Momentum 
-  MomentumVariant current_momentum_variant = momentum_variant;
+  GJKVariant current_gjk_variant = gjk_variant;
   Vec3f w = ray;
   Vec3f dir = ray;
   Vec3f y;
   FCL_REAL momentum;
-  bool switch_momentum_off = false;
+  bool switch_acceleration_off = false;
   if (measure_run_time)
   {
     timer.stop();
@@ -711,8 +712,8 @@ GJK::Status GJK::evaluate(const MinkowskiDiff& shape_, const Vec3f& guess,
     }
 
     // Compute direction for support call
-    switch (current_momentum_variant) {
-      case NoMomentum:
+    switch (current_gjk_variant) {
+      case Vanilla:
         dir = ray;
 
       // For accelerated GJK (heavy ball or nesterov), the best momentum scheme is slightly different if we normalize or not
@@ -779,34 +780,54 @@ GJK::Status GJK::evaluate(const MinkowskiDiff& shape_, const Vec3f& guess,
     }
 
     // check C: when the new support point is close to the sub-simplex where the ray point lies, stop (as the new simplex again is degenerated)
-    // -- CURRENT HPPFCL CRITERION: ||ray|| - ||xstar|| <= rl - alpha (where rl = ||ray||, xstar is unknown optimal solution)
-    /* alpha = std::max(alpha, omega); */
-    /* FCL_REAL diff = rl - alpha; */ 
-    /* bool cv_check_passed = diff - tolerance * rl <= 0; */
+    FCL_REAL diff;
+    bool cv_check_passed = false;
+    switch (convergence_criterion) {
 
-    // -- DUALITY GAP: ||ray - xstar|| <= sqrt(2 * ray.dot(ray - w))
-    /* FCL_REAL diff = std::sqrt(2 * ray.dot(ray - w)); */
-    /* bool cv_check_passed = diff - tolerance * rl <= 0; */
-    // ---- Squared version:
-    FCL_REAL diff = 2 * ray.dot(ray - w);
-    bool cv_check_passed = ((diff / (tolerance * rl)) - tolerance * rl) <= 0;
+      case VDB:
+        // -- CURRENT HPPFCL CRITERION: ||ray|| - ||xstar|| <= rl - alpha (where rl = ||ray||, xstar is unknown optimal solution)
+        alpha = std::max(alpha, omega);
+        diff = rl - alpha; 
+        cv_check_passed = diff - tolerance * rl <= 0;
+        break;
 
-    // -- IMPROVED DUALITY GAP: ||ray - xstar|| <= sqrt(rl*rl - alpha*alpha)
-    /* alpha = std::max(alpha, omega); */
-    /* FCL_REAL diff = std::sqrt(rl * rl - alpha * alpha); */ 
-    /* bool cv_check_passed = diff - tolerance * rl <= 0; */
-    // ---- Squared version:
-    /* alpha = std::max(alpha, omega); */
-    /* FCL_REAL diff = rl_squared - alpha * alpha; */
-    /* bool cv_check_passed = ((diff / (tolerance * rl)) - tolerance * rl) <= 0; */
+      case DG:
+        // -- DUALITY GAP: ||ray - xstar||^2 <= 2 * ray.dot(ray - w)
+        diff = 2 * ray.dot(ray - w);
+        cv_check_passed = (diff - tolerance) <= 0;
+        break;
+
+      case DG_RELATIVE:
+        // -- DUALITY GAP but relative
+        diff = 2 * ray.dot(ray - w);
+        cv_check_passed = ((diff / (tolerance * rl)) - tolerance * rl) <= 0;
+        break;
+
+      case IDG:
+        // -- IMPROVED DUALITY GAP: ||ray - xstar||^2 <= ||ray||^2 - alpha^2
+        alpha = std::max(alpha, omega);
+        diff = rl_squared - alpha * alpha;
+        cv_check_passed = (diff - tolerance) <= 0;
+        break;
+
+      case IDG_RELATIVE:
+        // -- IMPROVED DUALITY GAP but relative
+        alpha = std::max(alpha, omega);
+        diff = rl_squared - alpha * alpha;
+        cv_check_passed = ((diff / (tolerance * rl)) - tolerance * rl) <= 0;
+        break;
+
+      default:
+        throw std::logic_error("Invalid convergence criterion.");
+      }
 
     // --> Applying check C
     if(iterations > 0 && cv_check_passed)
     {
       removeVertex(simplices[current]);
-      if (current_momentum_variant != NoMomentum)
+      if (current_gjk_variant != Vanilla)
       {
-        switch_momentum_off = true;
+        switch_acceleration_off = true;
       } else {
         ++iterations; // Take this iteration into consideration
         distance = rl - inflation;
@@ -818,11 +839,11 @@ GJK::Status GJK::evaluate(const MinkowskiDiff& shape_, const Vec3f& guess,
       }
     }
 
-    if (switch_momentum_off)
+    if (switch_acceleration_off)
     {
       // No iterate update so no ++iteration.
-      current_momentum_variant = NoMomentum;
-      switch_momentum_off = false;
+      current_gjk_variant = Vanilla;
+      switch_acceleration_off = false;
     } else {
       // This has been rewritten thanks to the excellent video:
       // https://youtu.be/Qupqu1xe7Io

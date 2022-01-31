@@ -72,12 +72,24 @@ void exposeGJK()
       ;
   }
 
-  if(!eigenpy::register_symbolic_link_to_registered_type<GJK::MomentumVariant>())
+  if(!eigenpy::register_symbolic_link_to_registered_type<GJK::GJKVariant>())
   {
-    enum_ <GJK::MomentumVariant> ("MomentumVariant")
-      .value ("NoMomentum", GJK::NoMomentum)
+    enum_ <GJK::GJKVariant> ("GJKVariant")
+      .value ("Vanilla", GJK::Vanilla)
       .value ("HeavyBall", GJK::HeavyBall)
       .value ("Nesterov", GJK::Nesterov)
+      .export_values()
+      ;
+  }
+
+  if(!eigenpy::register_symbolic_link_to_registered_type<GJK::ConvergenceCriterion>())
+  {
+    enum_ <GJK::ConvergenceCriterion> ("ConvergenceCriterion")
+      .value ("VDB", GJK::VDB)
+      .value ("DG", GJK::DG)
+      .value ("DG_RELATIVE", GJK::DG_RELATIVE)
+      .value ("IDG", GJK::IDG)
+      .value ("IDG_RELATIVE", GJK::IDG_RELATIVE)
       .export_values()
       ;
   }
@@ -122,8 +134,9 @@ void exposeGJK()
       .DEF_CLASS_FUNC(GJK, setDistanceEarlyBreak)
       .DEF_CLASS_FUNC(GJK, getGuessFromSimplex)
       // Momentum related
-      .DEF_CLASS_FUNC(GJK, setMomentumVariant)
+      .DEF_CLASS_FUNC(GJK, setGJKVariant)
       .DEF_CLASS_FUNC(GJK, setNormalizeSupportDirection)
+      .DEF_CLASS_FUNC(GJK, setConvergenceCriterion)
       // Metrics to measure GJK performances
       .DEF_CLASS_FUNC(GJK, measureRunTime)
       .DEF_CLASS_FUNC(GJK, getIterations)

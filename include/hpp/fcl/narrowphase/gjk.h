@@ -193,7 +193,8 @@ struct HPP_FCL_DLLAPI GJK
   };
 
   enum Status {Valid, Inside, Failed};
-  enum MomentumVariant { NoMomentum, HeavyBall, Nesterov };
+  enum GJKVariant { Vanilla, HeavyBall, Nesterov };
+  enum ConvergenceCriterion { VDB, DG, DG_RELATIVE, IDG, IDG_RELATIVE };
 
   MinkowskiDiff const* shape;
   Vec3f ray;
@@ -304,8 +305,9 @@ struct HPP_FCL_DLLAPI GJK
   inline FCL_REAL getAverageGJKRunTimeEarly() { return average_gjk_run_time_early; }
 
   // Set functions for momentum
-  inline void setMomentumVariant(MomentumVariant variant) { momentum_variant = variant; }
+  inline void setGJKVariant(GJKVariant variant) { gjk_variant = variant; }
   inline void setNormalizeSupportDirection(bool normalize) { normalize_support_direction = normalize; }
+  inline void setConvergenceCriterion(ConvergenceCriterion cv_criterion) { convergence_criterion = cv_criterion; }
 
   // Unprotected for python access
   vertex_id_t nfree;
@@ -335,8 +337,9 @@ private:
   Timer timer_early;
 
   // Momentum
-  MomentumVariant momentum_variant;
+  GJKVariant gjk_variant;
   bool normalize_support_direction;
+  ConvergenceCriterion convergence_criterion;
 
   // -- GJK PERFORMANCE METRICS --
   // early: metric if we had stopped when separating plane is found
