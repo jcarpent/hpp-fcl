@@ -118,6 +118,16 @@ else()
   message(STATUS "FCL does not use Octomap")
 endif()
 
+OPTION(HPP_FCL_BUILD_LIBCCD_INTERFACE "Build the CCD interface for comparing against HPPFCL" OFF)
+if(HPP_FCL_BUILD_LIBCCD_INTERFACE)
+    ADD_PROJECT_DEPENDENCY(ccd)
+    if(ccd_FOUND)
+        message(STATUS "Will build CCD interface for comparisons.")
+    else()
+        message(STATUS "Cannot find CCD.")
+    endif()
+endif()
+
 option(HPP_FCL_HAS_QHULL "use qhull library to compute convex hulls." FALSE)
 if(HPP_FCL_HAS_QHULL)
   CHECK_MINIMAL_CXX_STANDARD(11 ENFORCE)
@@ -160,6 +170,7 @@ SET(${PROJECT_NAME}_HEADERS
   include/hpp/fcl/BV/kDOP.h
   include/hpp/fcl/narrowphase/narrowphase.h
   include/hpp/fcl/narrowphase/gjk.h
+  include/hpp/fcl/narrowphase/gjk_ccd_interface.h
   include/hpp/fcl/shape/convex.h
   include/hpp/fcl/shape/details/convex.hxx
   include/hpp/fcl/shape/geometric_shape_to_BVH_model.h

@@ -47,6 +47,7 @@ set(${LIBRARY_NAME}_SOURCES
   BV/OBB.cpp
   narrowphase/narrowphase.cpp
   narrowphase/gjk.cpp
+  narrowphase/gjk_ccd_interface.cpp
   narrowphase/details.h
   shape/convex.cpp
   shape/geometric_shapes.cpp
@@ -197,6 +198,11 @@ if(HPP_FCL_HAS_QHULL)
     target_link_libraries(${LIBRARY_NAME} PRIVATE "${Qhull_r_LIBRARY}")
   endif()
 endif()
+
+IF(HPP_FCL_BUILD_LIBCCD_INTERFACE)
+  TARGET_COMPILE_DEFINITIONS(${LIBRARY_NAME} PRIVATE -DHPP_FCL_BUILD_LIBCCD_INTERFACE)
+  TARGET_LINK_LIBRARIES(${LIBRARY_NAME} PRIVATE ccd)
+ENDIF()
 
 target_include_directories(${LIBRARY_NAME}
   SYSTEM PUBLIC
