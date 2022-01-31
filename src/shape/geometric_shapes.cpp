@@ -52,9 +52,14 @@ void ConvexBase::initialize(bool own_storage, Vec3f* points_, unsigned int num_p
   computeCenter();
 }
 
+void ConvexBase::set(bool own_storage_, Vec3f* points_, unsigned int num_points_)
+{
+  if(own_storage_ && points) delete [] points;
+  initialize(own_storage_,points_,num_points_);
+}
+
 ConvexBase::ConvexBase(const ConvexBase& other) :
   ShapeBase    (other),
-  points       (other.points),
   num_points   (other.num_points),
   center       (other.center),
   own_storage_ (other.own_storage_)
@@ -65,14 +70,17 @@ ConvexBase::ConvexBase(const ConvexBase& other) :
     if (own_storage_ && points) delete [] points;
 
     points = new Vec3f[num_points];
-    memcpy(points, other.points, sizeof(Vec3f) * num_points);
+    memcpy((void*)points, other.points, sizeof(Vec3f) * num_points);
   }
+  else
+    points = other.points;
 
   neighbors = new Neighbors[num_points];
   memcpy(neighbors, other.neighbors, sizeof(Neighbors) * num_points);
 
   int c_nneighbors = 0;
-  for (int i = 0; i < num_points; ++i) c_nneighbors += neighbors[i].count();
+  for (std::size_t i = 0; i < num_points; ++i)
+    c_nneighbors += neighbors[i].count();
   nneighbors_ = new unsigned int[c_nneighbors];
   memcpy(nneighbors_, other.nneighbors_, sizeof(unsigned int) * c_nneighbors);
 }
@@ -87,8 +95,8 @@ ConvexBase::~ConvexBase ()
 void ConvexBase::computeCenter()
 {
   center.setZero();
-  for(int i = 0; i < num_points; ++i)
-    center += points[i];
+  for(std::size_t i = 0; i < num_points; ++i)
+    center += points[i]; // TODO(jcarpent): vectorization
   center /= num_points;
 }
 
@@ -105,7 +113,7 @@ void Halfspace::unitNormalTest()
   {
     n << 1, 0, 0;
     d = 0;
-  }  
+  }
 }
 
 void Plane::unitNormalTest()
@@ -136,6 +144,13 @@ void Sphere::computeLocalAABB()
   computeBV<AABB>(*this, Transform3f(), aabb_local);
   aabb_center = aabb_local.center();
   aabb_radius = radius;
+}
+
+void Ellipsoid::computeLocalAABB()
+{
+  computeBV<AABB>(*this, Transform3f(), aabb_local);
+  aabb_center = aabb_local.center();
+  aabb_radius = (aabb_local.min_ - aabb_center).norm();
 }
 
 void Capsule::computeLocalAABB()

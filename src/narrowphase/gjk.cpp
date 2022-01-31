@@ -129,6 +129,19 @@ inline void getShapeSupport(const Sphere*, const Vec3f& /*dir*/, Vec3f& support,
   support.setZero();
 }
 
+inline void getShapeSupport(const Ellipsoid* ellipsoid, const Vec3f& dir, Vec3f& support, int&, MinkowskiDiff::ShapeData*)
+{
+  FCL_REAL a2 = ellipsoid->radii[0] * ellipsoid->radii[0];
+  FCL_REAL b2 = ellipsoid->radii[1] * ellipsoid->radii[1];
+  FCL_REAL c2 = ellipsoid->radii[2] * ellipsoid->radii[2];
+
+  Vec3f v(a2 * dir[0], b2 * dir[1], c2 * dir[2]);
+
+  FCL_REAL d = std::sqrt(v.dot(dir));
+
+  support = v / d;
+}
+
 inline void getShapeSupport(const Capsule* capsule, const Vec3f& dir, Vec3f& support, int&, MinkowskiDiff::ShapeData*)
 {
   support.head<2>().setZero();
@@ -206,7 +219,7 @@ void getShapeSupportLog(const ConvexBase* convex, const Vec3f& dir, Vec3f& suppo
   const Vec3f* pts = convex->points;
   const ConvexBase::Neighbors* nn = convex->neighbors;
 
-  if (hint < 0 || hint >= convex->num_points)
+  if (hint < 0 || hint >= (int)convex->num_points)
     hint = 0;
   FCL_REAL maxdot = pts[hint].dot(dir);
   FCL_REAL dot;
@@ -248,7 +261,7 @@ void getShapeSupportLinear(const ConvexBase* convex, const Vec3f& dir, Vec3f& su
 
   hint = 0;
   FCL_REAL maxdot = pts[0].dot(dir);
-  for (int i = 1; i < convex->num_points; ++i) {
+  for (int i = 1; i < (int)convex->num_points; ++i) {
     FCL_REAL dot = pts[i].dot(dir);
     if (dot > maxdot) {
       maxdot = dot;
@@ -299,6 +312,9 @@ Vec3f getSupport(const ShapeBase* shape, const Vec3f& dir, bool dirIsNormalized,
     break;
   case GEOM_SPHERE:
     CALL_GET_SHAPE_SUPPORT(Sphere);
+    break;
+  case GEOM_ELLIPSOID:
+    CALL_GET_SHAPE_SUPPORT(Ellipsoid);
     break;
   case GEOM_CAPSULE:
     CALL_GET_SHAPE_SUPPORT(Capsule);
@@ -381,6 +397,10 @@ MinkowskiDiff::GetSupportFunction makeGetSupportFunction1 (const ShapeBase* s1, 
     inflation[1] = static_cast<const Sphere*>(s1)->radius;
     if (identity) return getSupportFuncTpl<Shape0, Sphere, true >;
     else          return getSupportFuncTpl<Shape0, Sphere, false>;
+  case GEOM_ELLIPSOID:
+    // TODO: what should we put for inflation[1]?
+    if (identity) return getSupportFuncTpl<Shape0, Ellipsoid, true >;
+    else          return getSupportFuncTpl<Shape0, Ellipsoid, false>;
   case GEOM_CAPSULE:
     inflation[1] = static_cast<const Capsule*>(s1)->radius;
     if (identity) return getSupportFuncTpl<Shape0, Capsule, true >;
@@ -392,7 +412,8 @@ MinkowskiDiff::GetSupportFunction makeGetSupportFunction1 (const ShapeBase* s1, 
     if (identity) return getSupportFuncTpl<Shape0, Cylinder, true >;
     else          return getSupportFuncTpl<Shape0, Cylinder, false>;
   case GEOM_CONVEX:
-    if (static_cast<const ConvexBase*>(s1)->num_points > linear_log_convex_threshold) {
+    if ((int)static_cast<const ConvexBase*>(s1)->num_points >
+	linear_log_convex_threshold) {
       if (identity) return getSupportFuncTpl<Shape0, LargeConvex, true >;
       else          return getSupportFuncTpl<Shape0, LargeConvex, false>;
     } else {
@@ -420,6 +441,10 @@ MinkowskiDiff::GetSupportFunction makeGetSupportFunction0 (const ShapeBase* s0, 
     inflation[0] = static_cast<const Sphere*>(s0)->radius;
     return makeGetSupportFunction1<Sphere> (s1, identity, inflation, linear_log_convex_threshold);
     break;
+  case GEOM_ELLIPSOID:
+    // TODO: what should we put for inflation[0]?
+    return makeGetSupportFunction1<Ellipsoid> (s1, identity, inflation, linear_log_convex_threshold);
+    break;
   case GEOM_CAPSULE:
     inflation[0] = static_cast<const Capsule*>(s0)->radius;
     return makeGetSupportFunction1<Capsule> (s1, identity, inflation, linear_log_convex_threshold);
@@ -431,7 +456,8 @@ MinkowskiDiff::GetSupportFunction makeGetSupportFunction0 (const ShapeBase* s0, 
     return makeGetSupportFunction1<Cylinder> (s1, identity, inflation, linear_log_convex_threshold);
     break;
   case GEOM_CONVEX:
-    if (static_cast<const ConvexBase*>(s0)->num_points > linear_log_convex_threshold)
+    if ((int)static_cast<const ConvexBase*>(s0)->num_points >
+	linear_log_convex_threshold)
       return makeGetSupportFunction1<LargeConvex> (s1, identity, inflation, linear_log_convex_threshold);
     else
       return makeGetSupportFunction1<SmallConvex> (s1, identity, inflation, linear_log_convex_threshold);
@@ -710,7 +736,7 @@ GJK::Status GJK::evaluate(const MinkowskiDiff& shape_, const Vec3f& guess,
     /* bool cv_check_passed = diff - tolerance * rl <= 0; */
     // ---- Squared version:
     /* alpha = std::max(alpha, omega); */
-    /* FCL_REAL diff = rl_squared - alpha * alpha; */ 
+    /* FCL_REAL diff = rl_squared - alpha * alpha; */
     /* bool cv_check_passed = ((diff / (tolerance * rl)) - tolerance * rl) <= 0; */
 
     // --> Applying check C
@@ -800,7 +826,7 @@ bool GJK::encloseOrigin()
   switch(simplex->rank)
   {
   case 1:
-    for(size_t i = 0; i < 3; ++i)
+    for(int i = 0; i < 3; ++i)
     {
       axis[i] = 1;
       appendVertex(*simplex, axis, true, hint);
@@ -816,7 +842,7 @@ bool GJK::encloseOrigin()
   case 2:
     {
       Vec3f d = simplex->vertex[1]->w - simplex->vertex[0]->w;
-      for(size_t i = 0; i < 3; ++i)
+      for(int i = 0; i < 3; ++i)
       {
         axis[i] = 1;
         Vec3f p = d.cross(axis);
