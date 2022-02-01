@@ -87,6 +87,12 @@ struct HPP_FCL_DLLAPI MinkowskiDiff
   int index_support0;
   int index_support1;
 
+#ifdef HPP_FCL_BUILD_LIBCCD_INTERFACE
+  /// @brief added only for CCD to fully use hill-climbing when calling HPPFCL's support functions.
+  support_func_guess_t support_hint;
+  Vec3f guess;
+#endif
+
   /// @brief Number of points in a Convex object from which using a logarithmic
   /// support function is faster than a linear one.
   /// It defaults to 32.
@@ -299,8 +305,8 @@ struct HPP_FCL_DLLAPI GJK
   inline size_t getNumCallProjectionEarly() { return num_call_projection_early; }
   inline size_t getCumulativeSupportDotprods() { return cumulative_support_dotprods; }
   inline size_t getCumulativeSupportDotprodsEarly() { return cumulative_support_dotprods_early; }
-  inline CPUTimes getGJKRunTime() { return gjk_run_time; }
-  inline CPUTimes getGJKRunTimeEarly() { return gjk_run_time_early; }
+  inline FCL_REAL getGJKRunTime() { return gjk_run_time.user; }
+  inline FCL_REAL getGJKRunTimeEarly() { return gjk_run_time_early.user; }
   inline FCL_REAL getAverageGJKRunTime() { return average_gjk_run_time; }
   inline FCL_REAL getAverageGJKRunTimeEarly() { return average_gjk_run_time_early; }
 

@@ -44,6 +44,10 @@
 #include "doxygen_autodoc/hpp/fcl/narrowphase/gjk.h"
 #endif
 
+#ifdef HPP_FCL_BUILD_LIBCCD_INTERFACE
+#include <hpp/fcl/narrowphase/gjk_ccd_interface.h>
+#endif
+
 #include "../doc/python/doxygen.hh"
 #include "../doc/python/doxygen-boost.hh"
 
@@ -59,6 +63,10 @@ using namespace hpp::fcl;
 using hpp::fcl::details::MinkowskiDiff;
 using hpp::fcl::details::GJK;
 using hpp::fcl::details::EPA;
+
+#ifdef HPP_FCL_BUILD_LIBCCD_INTERFACE
+using hpp::fcl::details::GJKCCDWrapper;
+#endif
 
 void exposeGJK()
 {
@@ -117,6 +125,20 @@ void exposeGJK()
       .DEF_RW_CLASS_ATTRIB(MinkowskiDiff, index_support1)
       ;
   }
+
+#ifdef HPP_FCL_BUILD_LIBCCD_INTERFACE
+  if(!eigenpy::register_symbolic_link_to_registered_type<GJKCCDWrapper>())
+  {
+    class_ <GJKCCDWrapper> ("GJKCCDWrapper", doxygen::class_doc<GJKCCDWrapper>(), no_init)
+     .def (doxygen::visitor::init<GJK, unsigned int>())
+      .DEF_CLASS_FUNC(GJKCCDWrapper, evaluate)
+      .DEF_CLASS_FUNC(GJKCCDWrapper, measureRunTime)
+      .DEF_CLASS_FUNC(GJKCCDWrapper, getGJKRunTimeEarly)
+      .DEF_CLASS_FUNC(GJKCCDWrapper, computeGJKAverageRunTime)
+      .DEF_CLASS_FUNC(GJKCCDWrapper, getAverageGJKRunTimeEarly)
+      ;
+  }
+#endif
 
   if(!eigenpy::register_symbolic_link_to_registered_type<GJK>())
   {
