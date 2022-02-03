@@ -137,6 +137,9 @@ inline void getShapeSupport(const Ellipsoid* ellipsoid, const Vec3f& dir, Vec3f&
 
   Vec3f v(a2 * dir[0], b2 * dir[1], c2 * dir[2]);
 
+  // v.dot(dir) is guaranteed to be positive because the characteristic matrix A
+  // of an ellipsoid is positive-definite.
+  // Thus v.dot(A * v) > 0.
   FCL_REAL d = std::sqrt(v.dot(dir));
 
   support = v / d;
