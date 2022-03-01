@@ -595,17 +595,23 @@ void DynamicAABBTreeCollisionManager::setup()
 //==============================================================================
 void DynamicAABBTreeCollisionManager::update()
 {
+  std::cout << "for auto" << std::endl;
   for(auto it = table.cbegin(); it != table.cend(); ++it)
   {
     CollisionObject* obj = it->first;
     DynamicAABBNode* node = it->second;
     node->bv = obj->getAABB();
   }
+  std::cout << "end for auto" << std::endl;
 
+  std::cout << "refit" << std::endl;
   dtree.refit();
+  std::cout << "end refit" << std::endl;
   setup_ = false;
 
+  std::cout << "setup" << std::endl;
   setup();
+  std::cout << "end setup" << std::endl;
 }
 
 //==============================================================================
