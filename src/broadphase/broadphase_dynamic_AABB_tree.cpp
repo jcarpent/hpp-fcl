@@ -584,9 +584,17 @@ void DynamicAABBTreeCollisionManager::setup()
     size_t height = dtree.getMaxHeight();
 
     if((height - std::log((FCL_REAL)num) / std::log(2.0)) < max_tree_nonbalanced_level)
+    {
+      std::cout << "run dtree.balanceIncremental(tree_incremental_balance_pass);" << std::endl;
       dtree.balanceIncremental(tree_incremental_balance_pass);
+      std::cout << "end run dtree.balanceIncremental(tree_incremental_balance_pass);" << std::endl;
+    }
     else
+    {
+      std::cout << "run dtree.balanceTopdown();" << std::endl;
       dtree.balanceTopdown();
+      std::cout << "end run dtree.balanceTopdown();" << std::endl;
+    }
 
     setup_ = true;
   }
