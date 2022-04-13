@@ -327,6 +327,11 @@ struct HPP_FCL_DLLAPI GJK
   /// @brief Project origin (0) onto tetrahedran a-b-c-d
   bool projectTetrahedraOrigin(const Simplex& current, Simplex& next);
 
+  Vec3f x0;
+  Vec3f x1;
+  inline void computeClosestPoints() { getClosestPoints(*shape, x0, x1); }
+  inline int getSimplexRank() { return simplex->rank; }
+
 private:
   SimplexV store_v[4];
   SimplexV* free_v[4];

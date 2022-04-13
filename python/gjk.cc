@@ -146,15 +146,19 @@ void exposeGJK()
      .def (doxygen::visitor::init<GJK, unsigned int, FCL_REAL>())
       .DEF_RW_CLASS_ATTRIB (GJK, distance)
       .DEF_RW_CLASS_ATTRIB (GJK, ray)
+      .DEF_RW_CLASS_ATTRIB (GJK, x0)
+      .DEF_RW_CLASS_ATTRIB (GJK, x1)
       .DEF_RW_CLASS_ATTRIB (GJK, support_hint)
       .DEF_RW_CLASS_ATTRIB (GJK, nfree)
       .DEF_CLASS_FUNC(GJK, evaluate)
+      .DEF_CLASS_FUNC(GJK, computeClosestPoints)
       .DEF_CLASS_FUNC(GJK, computeGJKAverageRunTime)
       .DEF_CLASS_FUNC(GJK, hasClosestPoints)
       .DEF_CLASS_FUNC(GJK, hasPenetrationInformation)
       .DEF_CLASS_FUNC(GJK, getClosestPoints)
       .DEF_CLASS_FUNC(GJK, setDistanceEarlyBreak)
       .DEF_CLASS_FUNC(GJK, getGuessFromSimplex)
+      .DEF_CLASS_FUNC(GJK, getSimplexRank)
       // Momentum related
       .DEF_CLASS_FUNC(GJK, setGJKVariant)
       .DEF_CLASS_FUNC(GJK, setNormalizeSupportDirection)
@@ -201,5 +205,18 @@ void exposeGJK()
       .DEF_RW_CLASS_ATTRIB (GJK::SimplexV, index_w1)
       ;
   }
+  }
+
+  def("projectLineOrigin", &Project::projectLineOrigin);
+  def("projectTriangleOrigin", &Project::projectTriangleOrigin);
+  def("projectTetrahedraOrigin", &Project::projectTetrahedraOrigin);
+
+  if(!eigenpy::register_symbolic_link_to_registered_type<Project::ProjectResult>())
+  {
+    class_ <Project::ProjectResult> ("ProjectResult", doxygen::class_doc<Project::ProjectResult>(), no_init)
+     .def (doxygen::visitor::init<Project::ProjectResult>())
+      .DEF_RW_CLASS_ATTRIB (Project::ProjectResult, parameterization_eigen)
+      .DEF_CLASS_FUNC(Project::ProjectResult, updateParameterization)
+      ;
   }
 }
