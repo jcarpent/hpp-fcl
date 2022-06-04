@@ -138,6 +138,9 @@ struct HPP_FCL_DLLAPI QueryRequest {
   /// @brief enable timings when performing collision/distance request
   bool enable_timings;
 
+  /// @brief threshold below which a collision is considered.
+  FCL_REAL collision_distance_threshold;
+
   QueryRequest()
       : enable_cached_gjk_guess(false),
         gjk_variant(GJKVariant::DefaultGJK),
@@ -145,7 +148,9 @@ struct HPP_FCL_DLLAPI QueryRequest {
         convergence_criterion_type(GJKConvergenceCriterionType::Relative),
         cached_gjk_guess(1, 0, 0),
         cached_support_func_guess(support_func_guess_t::Zero()),
-        enable_timings(false) {}
+        enable_timings(false),
+        collision_distance_threshold(
+            Eigen::NumTraits<FCL_REAL>::dummy_precision()) {}
 
   void updateGuess(const QueryResult& result);
 
@@ -270,6 +275,11 @@ struct HPP_FCL_DLLAPI CollisionResult : QueryResult {
   /// overhead).
   FCL_REAL distance_lower_bound;
 
+  /// @brief nearest points
+  /// available only when distance_lower_bound is inferior to
+  /// CollisionRequest::break_distance.
+  Vec3f nearest_points[2];
+
  public:
   CollisionResult()
       : distance_lower_bound((std::numeric_limits<FCL_REAL>::max)()) {}
@@ -305,6 +315,18 @@ struct HPP_FCL_DLLAPI CollisionResult : QueryResult {
       return contacts[i];
     else
       return contacts.back();
+  }
+
+  /// @brief set the i-th contact calculated
+  void setContact(size_t i, const Contact& c) {
+    if (contacts.size() == 0)
+      throw std::invalid_argument(
+          "The number of contacts is zero. No Contact can be returned.");
+
+    if (i < contacts.size())
+      contacts[i] = c;
+    else
+      contacts.back() = c;
   }
 
   /// @brief get all the contacts
