@@ -667,6 +667,8 @@ DistanceFunctionMatrix::DistanceFunctionMatrix() {
       &Distance<BVHModel<KDOP<24> >, OcTree>;
   distance_matrix[GEOM_OCTREE][HF_AABB] = &distance_function_not_implemented;
   distance_matrix[GEOM_OCTREE][HF_OBBRSS] = &distance_function_not_implemented;
+  distance_matrix[HF_AABB][GEOM_OCTREE] = &distance_function_not_implemented;
+  distance_matrix[HF_OBBRSS][GEOM_OCTREE] = &distance_function_not_implemented;
 #endif
 }
 // template struct DistanceFunctionMatrix;
