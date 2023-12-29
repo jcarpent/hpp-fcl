@@ -487,8 +487,8 @@ class HPP_FCL_DLLAPI OcTreeSolver {
       Transform3f box_tf;
       constructBox(bv1, tf1, box, box_tf);
 
-      size_t primitive_id = static_cast<size_t>(bvn2.primitiveId());
-      const Triangle& tri_id = (*(tree2->tri_indices))[primitive_id];
+      const int primitive_id = bvn2.primitiveId();
+      const Triangle& tri_id = (*(tree2->tri_indices))[size_t(primitive_id)];
       const Vec3f& p1 = (*(tree2->vertices))[tri_id[0]];
       const Vec3f& p2 = (*(tree2->vertices))[tri_id[1]];
       const Vec3f& p3 = (*(tree2->vertices))[tri_id[2]];
@@ -496,15 +496,19 @@ class HPP_FCL_DLLAPI OcTreeSolver {
       Vec3f c1, c2, normal;
       FCL_REAL distance;
 
-      solver->shapeTriangleInteraction(box, box_tf, p1, p2, p3, tf2, distance,
-                                       c1, c2, normal);
+      bool collision = solver->shapeTriangleInteraction(
+          box, box_tf, p1, p2, p3, tf2, distance, c1, c2, normal);
       FCL_REAL distToCollision = distance - crequest->security_margin;
 
       if (cresult->numContacts() < crequest->num_max_contacts) {
-        if (distToCollision <= crequest->collision_distance_threshold) {
+        if (collision) {
+          cresult->addContact(Contact(tree1, tree2,
+                                      (int)(root1 - tree1->getRoot()),
+                                      primitive_id, c1, normal, -distance));
+        } else if (distToCollision < 0) {
           cresult->addContact(Contact(
-              tree1, tree2, (int)(root1 - tree1->getRoot()),
-              static_cast<int>(primitive_id), c1, c2, normal, distance));
+              tree1, tree2, (int)(root1 - tree1->getRoot()), primitive_id,
+              .5 * (c1 + c2), (c2 - c1).normalized(), -distance));
         }
       }
       internal::updateDistanceLowerBoundFromLeaf(
@@ -586,26 +590,28 @@ class HPP_FCL_DLLAPI OcTreeSolver {
       ConvexTriangle convex1, convex2;
       details::buildConvexTriangles(bvn2, *tree2, convex1, convex2);
 
-      Vec3f c1, c2, normal, normal_top;
+      Vec3f c1, c2, normal;
       FCL_REAL distance;
-      bool hfield_witness_is_on_bin_side;
 
       bool collision = details::shapeDistance<Triangle, Box, 0>(
-          solver, convex1, convex2, tf2, box, box_tf, distance, c2, c1, normal,
-          normal_top, hfield_witness_is_on_bin_side);
+          solver, convex1, convex2, tf2, box, box_tf, distance, c2, c1, normal);
 
-      FCL_REAL distToCollision =
-          distance - crequest->security_margin * (normal_top.dot(normal));
+      FCL_REAL distToCollision = distance - crequest->security_margin;
 
       if (distToCollision <= crequest->collision_distance_threshold) {
         sqrDistLowerBound = 0;
         if (crequest->num_max_contacts > cresult->numContacts()) {
-          if (normal_top.isApprox(normal) &&
-              (collision || !hfield_witness_is_on_bin_side)) {
-            cresult->addContact(
-                Contact(tree1, tree2, (int)(root1 - tree1->getRoot()),
-                        (int)Contact::NONE, c1, c2, -normal, distance));
-          }
+          cresult->addContact(Contact(
+              tree1, tree2, (int)(root1 - tree1->getRoot()), (int)Contact::NONE,
+              .5 * (c1 + c2), (c2 - c1).normalized(), -distance));
+        }
+      } else if (collision && crequest->security_margin >= 0) {
+        sqrDistLowerBound = 0;
+        if (crequest->num_max_contacts > cresult->numContacts()) {
+          cresult->addContact(
+              Contact(tree1, tree2, (int)(root1 - tree1->getRoot()),
+                      (int)Contact::NONE, c1, normal, -distance));
+          assert(cresult->isCollision());
         }
       } else
         sqrDistLowerBound = distToCollision * distToCollision;
@@ -696,26 +702,28 @@ class HPP_FCL_DLLAPI OcTreeSolver {
       ConvexTriangle convex1, convex2;
       details::buildConvexTriangles(bvn1, *tree1, convex1, convex2);
 
-      Vec3f c1, c2, normal, normal_top;
+      Vec3f c1, c2, normal;
       FCL_REAL distance;
-      bool hfield_witness_is_on_bin_side;
 
       bool collision = details::shapeDistance<Triangle, Box, 0>(
-          solver, convex1, convex2, tf1, box, box_tf, distance, c1, c2, normal,
-          normal_top, hfield_witness_is_on_bin_side);
+          solver, convex1, convex2, tf1, box, box_tf, distance, c1, c2, normal);
 
-      FCL_REAL distToCollision =
-          distance - crequest->security_margin * (normal_top.dot(normal));
+      FCL_REAL distToCollision = distance - crequest->security_margin;
 
       if (distToCollision <= crequest->collision_distance_threshold) {
         sqrDistLowerBound = 0;
         if (crequest->num_max_contacts > cresult->numContacts()) {
-          if (normal_top.isApprox(normal) &&
-              (collision || !hfield_witness_is_on_bin_side)) {
-            cresult->addContact(Contact(tree1, tree2, (int)Contact::NONE,
-                                        (int)(root2 - tree2->getRoot()), c1, c2,
-                                        normal, distance));
-          }
+          cresult->addContact(Contact(
+              tree1, tree2, (int)Contact::NONE, (int)(root2 - tree2->getRoot()),
+              .5 * (c1 + c2), (c2 - c1).normalized(), -distance));
+        }
+      } else if (collision && crequest->security_margin >= 0) {
+        sqrDistLowerBound = 0;
+        if (crequest->num_max_contacts > cresult->numContacts()) {
+          cresult->addContact(Contact(tree1, tree2, (int)Contact::NONE,
+                                      (int)(root2 - tree2->getRoot()), c1,
+                                      normal, -distance));
+          assert(cresult->isCollision());
         }
       } else
         sqrDistLowerBound = distToCollision * distToCollision;
@@ -889,16 +897,21 @@ class HPP_FCL_DLLAPI OcTreeSolver {
 
       FCL_REAL distance;
       Vec3f c1, c2, normal;
-      solver->shapeDistance(box1, box1_tf, box2, box2_tf, distance, c1, c2,
-                            normal);
+      bool collision = solver->shapeDistance(box1, box1_tf, box2, box2_tf,
+                                             distance, c1, c2, normal);
       FCL_REAL distToCollision = distance - crequest->security_margin;
 
       if (cresult->numContacts() < crequest->num_max_contacts) {
-        if (distToCollision <= crequest->collision_distance_threshold)
+        if (collision)
           cresult->addContact(
               Contact(tree1, tree2, static_cast<int>(root1 - tree1->getRoot()),
-                      static_cast<int>(root2 - tree2->getRoot()), c1, c2,
-                      normal, distance));
+                      static_cast<int>(root2 - tree2->getRoot()), c1, normal,
+                      -distance));
+        else if (distToCollision <= 0)
+          cresult->addContact(
+              Contact(tree1, tree2, static_cast<int>(root1 - tree1->getRoot()),
+                      static_cast<int>(root2 - tree2->getRoot()),
+                      .5 * (c1 + c2), (c2 - c1).normalized(), -distance));
       }
       internal::updateDistanceLowerBoundFromLeaf(
           *crequest, *cresult, distToCollision, c1, c2, normal);

@@ -1,7 +1,7 @@
 /*
  * Software License Agreement (BSD License)
  *
- *  Copyright (c) 2021-2023, INRIA.
+ *  Copyright (c) 2021, INRIA.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -45,7 +45,6 @@
 #include <hpp/fcl/shape/geometric_shapes_utility.h>
 #include <hpp/fcl/internal/traversal_node_base.h>
 #include <hpp/fcl/internal/traversal.h>
-#include <hpp/fcl/internal/intersect.h>
 #include <hpp/fcl/hfield.h>
 #include <hpp/fcl/shape/convex.h>
 
@@ -179,160 +178,50 @@ void buildConvexTriangles(const HFNode<BV>& node, const HeightField<BV>& model,
   }
 }
 
-inline Vec3f projectTriangle(const Vec3f& pointA, const Vec3f& pointB,
-                             const Vec3f& pointC, const Vec3f& point) {
-  const Project::ProjectResult result =
-      Project::projectTriangle(pointA, pointB, pointC, point);
-  Vec3f res = result.parameterization[0] * pointA +
-              result.parameterization[1] * pointB +
-              result.parameterization[2] * pointC;
-
-  return res;
-}
-
-template <typename Polygone, typename Shape>
-bool binCorrection(const Convex<Polygone>& convex, const Shape& shape,
-                   const Transform3f& shape_pose, FCL_REAL& distance,
-                   Vec3f& contact_1, Vec3f& contact_2, Vec3f& normal,
-                   Vec3f& normal_top, bool& is_collision) {
-  const Polygone& top_triangle = (*(convex.polygons))[1];
-  const std::vector<Vec3f>& points = *(convex.points);
-  const Vec3f pointA = points[top_triangle[0]];
-  const Vec3f pointB = points[top_triangle[1]];
-  const Vec3f pointC = points[top_triangle[2]];
-  normal_top = (pointB - pointA).cross(pointC - pointA).normalized();
-  if (normal_top[2] < 0) normal_top *= -1.;
-
-  assert(!normal_top.array().isNaN().any() && "normal_top is ill-defined");
-
-  const Vec3f contact_1_projected =
-      projectTriangle(pointA, pointB, pointC, contact_1);
-
-  bool hfield_witness_is_on_bin_side;
-  if (!contact_1_projected.isApprox(contact_1)) {
-    hfield_witness_is_on_bin_side = true;
-  } else {
-    hfield_witness_is_on_bin_side = false;
-    normal = normal_top;
-  }
-
-  // We correct only if there is a collision with the bin
-  if (is_collision) {
-    int hint = 0;
-    const Vec3f _support = getSupport(
-        &shape, -shape_pose.rotation().transpose() * normal_top, true, hint);
-    const Vec3f support =
-        shape_pose.rotation() * _support + shape_pose.translation();
-
-    // Project support into the inclined bin having triangle
-    const FCL_REAL offset_plane = normal_top.dot(pointA);
-    const Plane projection_plane(normal_top, offset_plane);
-    const FCL_REAL distance_support_projection_plane =
-        projection_plane.signedDistance(support);
-
-    const Vec3f projected_support =
-        support - distance_support_projection_plane * normal_top;
-
-    // We need now to project the projected in the triangle shape
-    contact_1 = projectTriangle(pointA, pointB, pointC, projected_support);
-    contact_2 = contact_1 + distance_support_projection_plane * normal_top;
-    normal = normal_top;
-    distance = -(contact_1 - contact_2).norm();
-  }
-
-  return hfield_witness_is_on_bin_side;
-}
-
 template <typename Polygone, typename Shape, int Options>
 bool shapeDistance(const GJKSolver* nsolver, const Convex<Polygone>& convex1,
                    const Convex<Polygone>& convex2, const Transform3f& tf1,
                    const Shape& shape, const Transform3f& tf2,
-                   FCL_REAL& distance, Vec3f& c1, Vec3f& c2, Vec3f& normal,
-                   Vec3f& normal_top, bool& hfield_witness_is_on_bin_side) {
+                   FCL_REAL& distance, Vec3f& c1, Vec3f& c2, Vec3f& normal) {
   enum { RTIsIdentity = Options & RelativeTransformationIsIdentity };
 
   const Transform3f Id;
-  Vec3f contact1_1, contact1_2, normal1, normal1_top;
-  Vec3f contact2_1, contact2_2, normal2, normal2_top;
-  FCL_REAL distance1, distance2;
+  Vec3f contact2_1, contact2_2, normal2;
+  FCL_REAL distance2;
   bool collision1, collision2;
-  bool hfield_witness_is_on_bin_side1, hfield_witness_is_on_bin_side2;
   if (RTIsIdentity)
-    nsolver->shapeDistance(convex1, Id, shape, tf2, distance1, contact1_1,
-                           contact1_2, normal1);
+    collision1 = !nsolver->shapeDistance(convex1, Id, shape, tf2, distance, c1,
+                                         c2, normal);
   else
-    nsolver->shapeDistance(convex1, tf1, shape, tf2, distance1, contact1_1,
-                           contact1_2, normal1);
-  collision1 = (distance1 < 0);
-
-  hfield_witness_is_on_bin_side1 =
-      binCorrection(convex1, shape, tf2, distance1, contact1_1, contact1_2,
-                    normal1, normal1_top, collision1);
+    collision1 = !nsolver->shapeDistance(convex1, tf1, shape, tf2, distance, c1,
+                                         c2, normal);
 
   if (RTIsIdentity)
-    nsolver->shapeDistance(convex2, Id, shape, tf2, distance2, contact2_1,
-                           contact2_2, normal);
+    collision2 = !nsolver->shapeDistance(convex2, Id, shape, tf2, distance2,
+                                         contact2_1, contact2_2, normal);
   else
-    nsolver->shapeDistance(convex2, tf1, shape, tf2, distance2, contact2_1,
-                           contact2_2, normal2);
-  collision2 = (distance2 < 0);
-
-  hfield_witness_is_on_bin_side2 =
-      binCorrection(convex2, shape, tf2, distance2, contact2_1, contact2_2,
-                    normal2, normal2_top, collision2);
+    collision2 = !nsolver->shapeDistance(convex2, tf1, shape, tf2, distance2,
+                                         contact2_1, contact2_2, normal2);
 
   if (collision1 && collision2) {
-    if (distance1 > distance2)  // switch values
+    if (distance > distance2)  // switch values
     {
       distance = distance2;
       c1 = contact2_1;
       c2 = contact2_2;
       normal = normal2;
-      normal_top = normal2_top;
-      hfield_witness_is_on_bin_side = hfield_witness_is_on_bin_side2;
-    } else {
-      distance = distance1;
-      c1 = contact1_1;
-      c2 = contact1_2;
-      normal = normal1;
-      normal_top = normal1_top;
-      hfield_witness_is_on_bin_side = hfield_witness_is_on_bin_side1;
     }
     return true;
   } else if (collision1) {
-    distance = distance1;
-    c1 = contact1_1;
-    c2 = contact1_2;
-    normal = normal1;
-    normal_top = normal1_top;
-    hfield_witness_is_on_bin_side = hfield_witness_is_on_bin_side1;
     return true;
   } else if (collision2) {
     distance = distance2;
     c1 = contact2_1;
     c2 = contact2_2;
     normal = normal2;
-    normal_top = normal2_top;
-    hfield_witness_is_on_bin_side = hfield_witness_is_on_bin_side2;
     return true;
   }
 
-  if (distance1 > distance2)  // switch values
-  {
-    distance = distance2;
-    c1 = contact2_1;
-    c2 = contact2_2;
-    normal = normal2;
-    normal_top = normal2_top;
-    hfield_witness_is_on_bin_side = hfield_witness_is_on_bin_side2;
-  } else {
-    distance = distance1;
-    c1 = contact1_1;
-    c2 = contact1_2;
-    normal = normal1;
-    normal_top = normal1_top;
-    hfield_witness_is_on_bin_side = hfield_witness_is_on_bin_side1;
-  }
   return false;
 }
 
@@ -422,7 +311,6 @@ class HeightFieldShapeCollisionTraversalNode
 
     nsolver = NULL;
     shape_inflation.setZero();
-    count = 0;
   }
 
   /// @brief Whether the BV node in the first BVH tree is leaf
@@ -471,7 +359,6 @@ class HeightFieldShapeCollisionTraversalNode
   /// @brief Intersection testing between leaves (one Convex and one shape)
   void leafCollides(unsigned int b1, unsigned int /*b2*/,
                     FCL_REAL& sqrDistLowerBound) const {
-    count++;
     if (this->enable_statistics) this->num_leaf_tests++;
     const HFNode<BV>& node = this->model1->getBV(b1);
 
@@ -488,25 +375,31 @@ class HeightFieldShapeCollisionTraversalNode
 
     FCL_REAL distance;
     //    Vec3f contact_point, normal;
-    Vec3f c1, c2, normal, normal_top;
-    bool hfield_witness_is_on_bin_side;
+    Vec3f c1, c2, normal;
 
     bool collision = details::shapeDistance<Triangle, S, Options>(
         nsolver, convex1, convex2, this->tf1, *(this->model2), this->tf2,
-        distance, c1, c2, normal, normal_top, hfield_witness_is_on_bin_side);
+        distance, c1, c2, normal);
 
-    FCL_REAL distToCollision =
-        distance - this->request.security_margin * (normal_top.dot(normal));
+    //    this->shapeCollision(convex1, convex2, this->tf1, *(this->model2),
+    //    this->tf2,
+    //                         distance, contact_point, normal);
+
+    FCL_REAL distToCollision = distance - this->request.security_margin;
     if (distToCollision <= this->request.collision_distance_threshold) {
       sqrDistLowerBound = 0;
-      if (this->result->numContacts() < this->request.num_max_contacts) {
-        if (normal_top.isApprox(normal) &&
-            (collision || !hfield_witness_is_on_bin_side)) {
-          this->result->addContact(Contact(this->model1, this->model2, (int)b1,
-                                           (int)Contact::NONE, c1, c2, normal,
-                                           distance));
-          assert(this->result->isCollision());
-        }
+      if (this->request.num_max_contacts > this->result->numContacts()) {
+        this->result->addContact(Contact(this->model1, this->model2, (int)b1,
+                                         (int)Contact::NONE, .5 * (c1 + c2),
+                                         (c2 - c1).normalized(), -distance));
+      }
+    } else if (collision && this->request.security_margin >= 0) {
+      sqrDistLowerBound = 0;
+      if (this->request.num_max_contacts > this->result->numContacts()) {
+        this->result->addContact(Contact(this->model1, this->model2, (int)b1,
+                                         (int)Contact::NONE, c1, normal,
+                                         -distance));
+        assert(this->result->isCollision());
       }
     } else
       sqrDistLowerBound = distToCollision * distToCollision;
@@ -530,7 +423,6 @@ class HeightFieldShapeCollisionTraversalNode
   mutable int num_bv_tests;
   mutable int num_leaf_tests;
   mutable FCL_REAL query_time_seconds;
-  mutable int count;
 };
 
 /// @}

@@ -653,6 +653,8 @@ DistanceFunctionMatrix::DistanceFunctionMatrix() {
       &Distance<OcTree, BVHModel<KDOP<18> > >;
   distance_matrix[GEOM_OCTREE][BV_KDOP24] =
       &Distance<OcTree, BVHModel<KDOP<24> > >;
+  distance_matrix[GEOM_OCTREE][HF_AABB] = &distance_function_not_implemented;
+  distance_matrix[GEOM_OCTREE][HF_OBBRSS] = &distance_function_not_implemented;
 
   distance_matrix[BV_AABB][GEOM_OCTREE] = &Distance<BVHModel<AABB>, OcTree>;
   distance_matrix[BV_OBB][GEOM_OCTREE] = &Distance<BVHModel<OBB>, OcTree>;
