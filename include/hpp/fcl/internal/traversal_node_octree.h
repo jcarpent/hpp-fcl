@@ -256,6 +256,10 @@ class HPP_FCL_DLLAPI OcTreeSolver {
         Transform3f box_tf;
         constructBox(bv1, tf1, box, box_tf);
 
+        if (solver->gjk_initial_guess == GJKInitialGuess::BoundingVolumeGuess) {
+          box.computeLocalAABB();
+        }
+
         FCL_REAL dist;
         Vec3f closest_p1, closest_p2, normal;
         solver->shapeDistance(box, box_tf, s, tf2, dist, closest_p1, closest_p2,
@@ -325,6 +329,9 @@ class HPP_FCL_DLLAPI OcTreeSolver {
       Box box;
       Transform3f box_tf;
       constructBox(bv1, tf1, box, box_tf);
+      if (solver->gjk_initial_guess == GJKInitialGuess::BoundingVolumeGuess) {
+        box.computeLocalAABB();
+      }
 
       bool contactNotAdded =
           (cresult->numContacts() >= crequest->num_max_contacts);
@@ -371,6 +378,10 @@ class HPP_FCL_DLLAPI OcTreeSolver {
         Box box;
         Transform3f box_tf;
         constructBox(bv1, tf1, box, box_tf);
+
+        if (solver->gjk_initial_guess == GJKInitialGuess::BoundingVolumeGuess) {
+          box.computeLocalAABB();
+        }
 
         size_t primitive_id =
             static_cast<size_t>(tree2->getBV(root2).primitiveId());
@@ -487,6 +498,10 @@ class HPP_FCL_DLLAPI OcTreeSolver {
       Transform3f box_tf;
       constructBox(bv1, tf1, box, box_tf);
 
+      if (solver->gjk_initial_guess == GJKInitialGuess::BoundingVolumeGuess) {
+        box.computeLocalAABB();
+      }
+
       const int primitive_id = bvn2.primitiveId();
       const Triangle& tri_id = (*(tree2->tri_indices))[size_t(primitive_id)];
       const Vec3f& p1 = (*(tree2->vertices))[tri_id[0]];
@@ -585,10 +600,17 @@ class HPP_FCL_DLLAPI OcTreeSolver {
       Box box;
       Transform3f box_tf;
       constructBox(bv1, tf1, box, box_tf);
+      if (solver->gjk_initial_guess == GJKInitialGuess::BoundingVolumeGuess) {
+        box.computeLocalAABB();
+      }
 
       typedef Convex<Triangle> ConvexTriangle;
       ConvexTriangle convex1, convex2;
       details::buildConvexTriangles(bvn2, *tree2, convex1, convex2);
+      if (solver->gjk_initial_guess == GJKInitialGuess::BoundingVolumeGuess) {
+        convex1.computeLocalAABB();
+        convex2.computeLocalAABB();
+      }
 
       Vec3f c1, c2, normal;
       FCL_REAL distance;
@@ -697,10 +719,17 @@ class HPP_FCL_DLLAPI OcTreeSolver {
       Box box;
       Transform3f box_tf;
       constructBox(bv2, tf2, box, box_tf);
+      if (solver->gjk_initial_guess == GJKInitialGuess::BoundingVolumeGuess) {
+        box.computeLocalAABB();
+      }
 
       typedef Convex<Triangle> ConvexTriangle;
       ConvexTriangle convex1, convex2;
       details::buildConvexTriangles(bvn1, *tree1, convex1, convex2);
+      if (solver->gjk_initial_guess == GJKInitialGuess::BoundingVolumeGuess) {
+        convex1.computeLocalAABB();
+        convex2.computeLocalAABB();
+      }
 
       Vec3f c1, c2, normal;
       FCL_REAL distance;
@@ -779,6 +808,11 @@ class HPP_FCL_DLLAPI OcTreeSolver {
         Transform3f box1_tf, box2_tf;
         constructBox(bv1, tf1, box1, box1_tf);
         constructBox(bv2, tf2, box2, box2_tf);
+
+        if (solver->gjk_initial_guess == GJKInitialGuess::BoundingVolumeGuess) {
+          box1.computeLocalAABB();
+          box2.computeLocalAABB();
+        }
 
         FCL_REAL dist;
         Vec3f closest_p1, closest_p2, normal;
@@ -894,6 +928,11 @@ class HPP_FCL_DLLAPI OcTreeSolver {
       Transform3f box1_tf, box2_tf;
       constructBox(bv1, tf1, box1, box1_tf);
       constructBox(bv2, tf2, box2, box2_tf);
+
+      if (solver->gjk_initial_guess == GJKInitialGuess::BoundingVolumeGuess) {
+        box1.computeLocalAABB();
+        box2.computeLocalAABB();
+      }
 
       FCL_REAL distance;
       Vec3f c1, c2, normal;
